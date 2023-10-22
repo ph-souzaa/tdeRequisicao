@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Requisições</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+
+  <!-- Firebase Auth (se estiver usando) -->
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
+
+  <!-- Firebase Firestore (se estiver usando) -->
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
+
+  <!-- Firebase Analytics (se estiver usando) -->
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-analytics-compat.js"></script>
+
+</head>
+
+<body>
+
+  <!-- Autenticação -->
+  <div id=" auth-section">
+    <h2>Autenticação</h2>
+
+    <!-- Registro -->
+    <div>
+      <h3>Registro</h3>
+      <input type="text" id="register-name" placeholder="Nome">
+      <input type="email" id="register-email" placeholder="Email">
+      <input type="password" id="register-password" placeholder="Senha">
+      <button onclick="register()">Registrar</button>
+    </div>
+
+    <!-- Login -->
+    <div>
+      <h3>Login</h3>
+      <input type="email" id="login-email" placeholder="Email">
+      <input type="password" id="login-password" placeholder="Senha">
+      <button onclick="login()">Entrar</button>
+    </div>
+
+    <!-- Logout -->
+    <button onclick="logout()">Sair</button>
+  </div>
+
+  <!-- Adicionar Requisição -->
+  <div id="add-request-section">
+    <h2>Adicionar Requisição</h2>
+    <input type="text" id="request-description" placeholder="Descrição">
+    <button onclick="addRequest()">Adicionar Requisição</button>
+  </div>
+
+  <!-- Lista de Requisições -->
+  <div id="requests-section">
+    <h2>Minhas Requisições</h2>
+    <ul id="requests-list">
+      <!-- As requisições serão listadas aqui -->
+    </ul>
+  </div>
+
+  <!-- Itens da Requisição -->
+  <div id="items-section" style="display: none;">
+    <h2>Itens da Requisição: <span id="current-request-description"></span></h2>
+
+    <!-- Adicionar Item -->
+    <div>
+      <input type="text" id="item-name" placeholder="Nome do Item">
+      <input type="number" id="item-quantity" placeholder="Quantidade">
+      <input type="number" id="item-price" placeholder="Preço" step="0.01">
+      <button onclick="addItem()">Adicionar Item</button>
+    </div>
+
+    <!-- Lista de Itens -->
+    <ul id="items-list">
+      <!-- Os itens serão listados aqui -->
+    </ul>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
