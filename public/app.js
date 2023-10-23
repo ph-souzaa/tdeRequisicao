@@ -48,23 +48,21 @@ function register () {
     .then((userCredential) => {
       const user = userCredential.user;
 
-      // ... parte anterior da função ...
-
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(async position => {
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
-          const city = await getCityFromCoords(latitude, longitude); // Adicione esta linha
+          const city = await getCityFromCoords(latitude, longitude);
 
           try {
             await firebase.firestore().doc(`usuarios/${user.uid}`).set({
               email: user.email,
               role: 'user',
               location: { latitude, longitude },
-              city: city  // Adicione esta linha
+              city: city
             });
-
-            // ... restante do código ...
+            showLogin();
+            console.log('Usuário registrado com sucesso!');
           } catch (error) {
             console.error('Erro ao registrar o usuário e a localização:', error.message);
           }
@@ -74,27 +72,11 @@ function register () {
       } else {
         console.warn('Geolocalização não é suportada neste navegador.');
       }
-
-
     })
     .catch((error) => {
       console.error('Erro ao registrar o usuário:', error.message);
     });
-
-
-  showLogin();
-
-  // ... restante da função ...
 }
-
-firebase.auth().onAuthStateChanged((user) => {
-  if (user) {
-    showRequests();
-  } else {
-    showLogin();
-  }
-});
-
 // Função para Login
 let userRole = null; // Variável global para armazenar o papel do usuário
 
@@ -121,8 +103,8 @@ function login () {
     .catch((error) => {
       console.error('Erro ao autenticar:', error.message);
     });
-  initFCM();
   showRequests();
+  initFCM();
 }
 
 // Função para Logout
@@ -445,6 +427,8 @@ if ('serviceWorker' in navigator) {
   }).catch(function (error) {
     console.log('Falha ao registrar o Service Worker:', error);
   });
+} else {
+  console.warn('Service Worker não é suportado neste navegador.');
 }
 
 const messaging = firebase.messaging();
@@ -527,4 +511,30 @@ window.addEventListener('online', async () => {
   }
 
   await localforage.setItem('savedRequests', []);
+});
+
+document.addEventListener('DOMContentLoaded', (event) => {
+  // Solicitar permissão para localização
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(position => {
+      console.log('Localização permitida:', position);
+    }, error => {
+      console.warn('Erro ao obter geolocalização:', error.message);
+    });
+  } else {
+    console.warn('Geolocalização não é suportada neste navegador.');
+  }
+
+  // Solicitar permissão para notificações
+  if ("Notification" in window) {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        console.log('Permissão de notificação concedida.');
+      } else {
+        console.warn('Permissão de notificação não concedida.');
+      }
+    });
+  } else {
+    console.log("Este navegador não suporta notificações do sistema.");
+  }
 });
