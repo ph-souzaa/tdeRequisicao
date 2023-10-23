@@ -1,6 +1,3 @@
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -12,6 +9,11 @@ const firebaseConfig = {
   appId: "1:716098425450:web:b7749f812f3b0587e2b013",
   measurementId: "G-BNLQXEVLVC"
 };
+
+function isOnline () {
+  console.log("voce tem internet")
+  return window.navigator.onLine;
+}
 
 // Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
@@ -113,31 +115,40 @@ function addRequest () {
   const user = auth.currentUser;
 
   if (user) {
-    // Acessando a subcoleção corretamente
-    const requestsRef = firebase.firestore()
-      .collection('usuarios')
-      .doc(user.uid)
-      .collection('requisicoes');
 
-    // Adicionando documento à subcoleção
-    requestsRef.add({
-      descricao: description,
-      hora: firebase.firestore.Timestamp.fromDate(new Date()),
-      status: "Pendente",
-      userId: user.uid,  // Novo campo: ID do usuário
-      userEmail: user.email  // Novo campo: E-mail do usuário
-    }).then(() => {
-      console.log('Requisição adicionada com sucesso!');
-      // Limpar campo de descrição
-      document.getElementById('request-description').value = '';
-      // Atualizar lista de requisições
-      listRequests();
-    }).catch((error) => {
-      console.error('Erro ao adicionar requisição:', error.message);
-    });
+    if (isOnline()) {
+      // Acessando a subcoleção corretamente
+      const requestsRef = firebase.firestore()
+        .collection('usuarios')
+        .doc(user.uid)
+        .collection('requisicoes');
+
+      // Adicionando documento à subcoleção
+      requestsRef.add({
+        descricao: description,
+        hora: firebase.firestore.Timestamp.fromDate(new Date()),
+        status: "Pendente",
+        userId: user.uid,  // Novo campo: ID do usuário
+        userEmail: user.email  // Novo campo: E-mail do usuário
+      }).then(() => {
+        console.log('Requisição adicionada com sucesso!');
+        // Limpar campo de descrição
+        document.getElementById('request-description').value = '';
+        // Atualizar lista de requisições
+        listRequests();
+      }).catch((error) => {
+        console.error('Erro ao adicionar requisição:', error.message);
+      });
+    } else {
+      // Se estiver offline, armazene os dados localmente e registre uma tag de sincronização
+      storeRequestLocally(description, user.uid, user.email);
+      navigator.serviceWorker.ready.then(function (registration) {
+        return registration.sync.register('sync-requests');
+      });
+    }
+    $('#addRequestModal').modal('hide');
   }
 }
-
 
 // Função para Atualizar Status da Requisição
 function updateRequestStatus (docId, newStatus, userId) {
@@ -260,28 +271,37 @@ function addItem () {
   const itemPrice = parseFloat(document.getElementById('item-price').value);
 
   if (user && currentRequestId) {
-    const itemsRef = firebase.firestore()
-      .collection('usuarios')
-      .doc(user.uid)
-      .collection('requisicoes')
-      .doc(currentRequestId)
-      .collection('itens');
 
-    itemsRef.add({
-      nome: itemName,
-      quantidade: itemQuantity,
-      preco: itemPrice
-    }).then(() => {
-      console.log('Item adicionado com sucesso!');
-      // Limpar campos de entrada
-      document.getElementById('item-name').value = '';
-      document.getElementById('item-quantity').value = '';
-      document.getElementById('item-price').value = '';
-      // Atualizar lista de itens
-      listItems();
-    }).catch((error) => {
-      console.error('Erro ao adicionar item:', error.message);
-    });
+    if (isOnline()) {
+      const itemsRef = firebase.firestore()
+        .collection('usuarios')
+        .doc(user.uid)
+        .collection('requisicoes')
+        .doc(currentRequestId)
+        .collection('itens');
+
+      itemsRef.add({
+        nome: itemName,
+        quantidade: itemQuantity,
+        preco: itemPrice
+      }).then(() => {
+        console.log('Item adicionado com sucesso!');
+        // Limpar campos de entrada
+        document.getElementById('item-name').value = '';
+        document.getElementById('item-quantity').value = '';
+        document.getElementById('item-price').value = '';
+        // Atualizar lista de itens
+        listItems();
+      }).catch((error) => {
+        console.error('Erro ao adicionar item:', error.message);
+      });
+    } else {
+      // Se estiver offline, armazene os dados localmente e registre uma tag de sincronização
+      storeItemLocally(itemName, itemQuantity, itemPrice, currentRequestId, user.uid);
+      navigator.serviceWorker.ready.then(function (registration) {
+        return registration.sync.register('sync-items');
+      });
+    }
   }
 }
 
@@ -383,7 +403,6 @@ function listItems () {
   $('#addItemModal').modal('show');
 }
 
-
 const messaging = firebase.messaging();
 
 function initFCM () {
@@ -392,6 +411,7 @@ function initFCM () {
       console.log('Permissão concedida.');
 
       messaging.getToken().then((token) => {
+        const userTokens = token;
         console.log('Token FCM:', token);
         // ... resto do seu código
       });
@@ -427,11 +447,46 @@ function displayNotification (payload) {
 }
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    .then((registration) => {
-      console.log('Service Worker registrado com sucesso:', registration);
-    })
-    .catch((error) => {
-      console.error('Erro ao registrar o Service Worker:', error);
-    });
+  navigator.serviceWorker.register('/service-worker.js').then(function (registration) {
+    console.log('Service Worker registrado com sucesso:', registration);
+  }).catch(function (error) {
+    console.log('Falha ao registrar o Service Worker:', error);
+  });
+}
+
+
+async function storeRequestLocally (description, userId, userEmail) {
+  try {
+    const requests = await idbKeyval.get('offline-requests') || [];
+    const newRequest = {
+      description,
+      userId,
+      userEmail,
+      timestamp: Date.now()
+    };
+    requests.push(newRequest);
+    await idbKeyval.set('offline-requests', requests);
+    console.log('Requisição armazenada localmente.');
+  } catch (error) {
+    console.error('Erro ao armazenar requisição localmente:', error);
+  }
+}
+
+async function storeItemLocally (itemName, itemQuantity, itemPrice, requestId, userId) {
+  try {
+    const items = await idbKeyval.get('offline-items') || [];
+    const newItem = {
+      itemName,
+      itemQuantity,
+      itemPrice,
+      requestId,
+      userId,
+      timestamp: Date.now()
+    };
+    items.push(newItem);
+    await idbKeyval.set('offline-items', items);
+    console.log('Item armazenado localmente.');
+  } catch (error) {
+    console.error('Erro ao armazenar item localmente:', error);
+  }
 }
