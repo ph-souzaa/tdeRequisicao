@@ -5,81 +5,120 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gerenciador de Requisições</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
 
+  <!-- Bootstrap CSS -->
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
   <!-- Firebase Auth (se estiver usando) -->
   <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
-
   <!-- Firebase Firestore (se estiver usando) -->
   <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
-
   <!-- Firebase Analytics (se estiver usando) -->
   <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-analytics-compat.js"></script>
 
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-messaging-compat.js"></script>
+
 </head>
 
-<body>
+<!-- ... -->
 
-  <!-- Autenticação -->
-  <div id=" auth-section">
-    <h2>Autenticação</h2>
-
-    <!-- Registro -->
-    <div>
-      <h3>Registro</h3>
-      <input type="text" id="register-name" placeholder="Nome">
-      <input type="email" id="register-email" placeholder="Email">
-      <input type="password" id="register-password" placeholder="Senha">
-      <button onclick="register()">Registrar</button>
+<body class="bg-light py-5">
+  <div class="container">
+    <!-- Tela de Login -->
+    <div class="card mb-5" id="login-section">
+      <div class="card-body">
+        <h2 class="card-title">Login</h2>
+        <input type="email" class="form-control mb-2" id="login-email" placeholder="Email">
+        <input type="password" class="form-control mb-3" id="login-password" placeholder="Senha">
+        <button onclick="login()" class="btn btn-success">Entrar</button>
+        <button onclick="showRegister()" class="btn btn-secondary mt-3">Registrar</button>
+      </div>
     </div>
 
-    <!-- Login -->
-    <div>
-      <h3>Login</h3>
-      <input type="email" id="login-email" placeholder="Email">
-      <input type="password" id="login-password" placeholder="Senha">
-      <button onclick="login()">Entrar</button>
+    <!-- Tela de Registro -->
+    <div class="card mb-5" id="register-section" style="display: none;">
+      <div class="card-body">
+        <h2 class="card-title">Registro</h2>
+        <input type="text" class="form-control mb-2" id="register-name" placeholder="Nome">
+        <input type="email" class="form-control mb-2" id="register-email" placeholder="Email">
+        <input type="password" class="form-control mb-3" id="register-password" placeholder="Senha">
+        <button onclick="register()" class="btn btn-primary">Registrar</button>
+        <button onclick="showLogin()" class="btn btn-outline-secondary mt-3">Voltar</button>
+        </ul>
+      </div>
     </div>
 
-    <!-- Logout -->
-    <button onclick="logout()">Sair</button>
-  </div>
-
-  <!-- Adicionar Requisição -->
-  <div id="add-request-section">
-    <h2>Adicionar Requisição</h2>
-    <input type="text" id="request-description" placeholder="Descrição">
-    <button onclick="addRequest()">Adicionar Requisição</button>
-  </div>
-
-  <!-- Lista de Requisições -->
-  <div id="requests-section">
-    <h2>Minhas Requisições</h2>
-    <ul id="requests-list">
-      <!-- As requisições serão listadas aqui -->
-    </ul>
-  </div>
-
-  <!-- Itens da Requisição -->
-  <div id="items-section" style="display: none;">
-    <h2>Itens da Requisição: <span id="current-request-description"></span></h2>
-
-    <!-- Adicionar Item -->
-    <div>
-      <input type="text" id="item-name" placeholder="Nome do Item">
-      <input type="number" id="item-quantity" placeholder="Quantidade">
-      <input type="number" id="item-price" placeholder="Preço" step="0.01">
-      <button onclick="addItem()">Adicionar Item</button>
+    <!-- Lista de Requisições -->
+    <div class="card mb-5" id="requests-section" style="display: none;">
+      <!-- Navbar com botão de sair -->
+      <nav class="navbar navbar-expand-lg navbar-light bg-light mb-5">
+        <button onclick="logout()" class="btn btn-outline-danger ml-auto">Sair</button>
+      </nav>
+      <div class="card-body">
+        <h2 class="card-title">Minhas Requisições</h2>
+        <ul class="list-group" id="requests-list">
+          <!-- As requisições serão listadas aqui -->
+        </ul>
+      </div>
     </div>
 
-    <!-- Lista de Itens -->
-    <ul id="items-list">
-      <!-- Os itens serão listados aqui -->
-    </ul>
+  </div>
+
+  <!-- Modal para Adicionar Item -->
+  <div class="modal fade" id="addItemModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Adicionar Item</h4>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <h5 id="current-request-description"></h5>
+          <input type="text" class="form-control mb-2" id="item-name" placeholder="Nome do Item">
+          <input type="number" class="form-control mb-2" id="item-quantity" placeholder="Quantidade">
+          <input type="number" class="form-control mb-3" id="item-price" placeholder="Preço" step="0.01">
+          <button onclick="addItem()" class="btn btn-warning">Adicionar Item</button>
+          <ul id="modal-items-list" class="list-group mt-3"></ul>
+        </div>
+
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <!-- Funções JavaScript adicionais para controlar o fluxo -->
+  <script>
+    function showRegister () {
+      hideElement('login-section');
+      showElement('register-section');
+    }
+
+    function showLogin () {
+      showElement('login-section');
+      hideElement('register-section');
+      hideElement('requests-section');
+    }
+
+    function showRequests () {
+      hideElement('login-section');
+      hideElement('register-section');
+      showElement('requests-section');
+    }
+
+    function hideElement (elementId) {
+      document.getElementById(elementId).style.display = 'none';
+    }
+
+    function showElement (elementId) {
+      document.getElementById(elementId).style.display = '';
+    }
+  </script>
+
 </body>
 
 </html>

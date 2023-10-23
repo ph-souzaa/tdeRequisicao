@@ -50,7 +50,17 @@ function register () {
     .catch((error) => {
       console.error('Erro ao registrar o usuário:', error.message);
     });
+
+  showLogin();
 }
+
+firebase.auth().onAuthStateChanged((user) => {
+  if (user) {
+    showRequests();
+  } else {
+    showLogin();
+  }
+});
 
 // Função para Login
 let userRole = null; // Variável global para armazenar o papel do usuário
@@ -78,6 +88,8 @@ function login () {
     .catch((error) => {
       console.error('Erro ao autenticar:', error.message);
     });
+  initFCM();
+  showRequests();
 }
 
 // Função para Logout
@@ -89,6 +101,7 @@ function logout () {
   }).catch((error) => {
     console.error('Erro ao deslogar:', error.message);
   });
+  showLogin();
 }
 
 
@@ -222,9 +235,11 @@ function listRequests () {
 
         li.onclick = function () {
           // Configurar a visualização de itens
+          // Abre o modal para vincular um item
+          $('#addItemModal').modal('show');
           currentRequestId = doc.id;
           document.getElementById('current-request-description').textContent = requestData.descricao;
-          document.getElementById('items-section').style.display = 'block'; // Mostrar a seção de itens
+          document.getElementById('modal-items-list').style.display = 'block'; // Mostrar a seção de itens
           listItems(); // Carregar itens da requisição
         };
 
@@ -330,8 +345,11 @@ function listItems () {
       .doc(currentRequestId)
       .collection('itens');
 
+    const itemsList = document.getElementById('modal-items-list');
+    itemsList.innerHTML = ''; // Limpar lista existente
+
     itemsRef.get().then((querySnapshot) => {
-      const itemsList = document.getElementById('items-list');
+      const itemsList = document.getElementById('modal-items-list');
       itemsList.innerHTML = ''; // Limpar lista existente
       querySnapshot.forEach((doc) => {
         const itemData = doc.data();
@@ -361,5 +379,59 @@ function listItems () {
       console.error('Erro ao listar itens:', error.message);
     });
   }
+
+  $('#addItemModal').modal('show');
 }
 
+
+const messaging = firebase.messaging();
+
+function initFCM () {
+  Notification.requestPermission().then(permission => {
+    if (permission === 'granted') {
+      console.log('Permissão concedida.');
+
+      messaging.getToken().then((token) => {
+        console.log('Token FCM:', token);
+        // ... resto do seu código
+      });
+    } else {
+      console.error('Permissão não concedida.');
+    }
+  }).catch((error) => {
+    console.error('Erro ao obter permissão:', error);
+  });
+}
+
+
+messaging.onMessage((payload) => {
+  console.log('Notificação recebida:', payload);
+  // Você pode personalizar como deseja exibir a notificação aqui.
+  displayNotification(payload);
+});
+
+function displayNotification (payload) {
+  if (!("Notification" in window)) {
+    console.log("Este navegador não suporta notificações do sistema.");
+    return;
+  }
+
+  let title = payload.notification.title;
+  let options = {
+    body: payload.notification.body,
+    icon: payload.notification.icon,
+    badge: payload.notification.badge
+  };
+
+  new Notification(title, options);
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    .then((registration) => {
+      console.log('Service Worker registrado com sucesso:', registration);
+    })
+    .catch((error) => {
+      console.error('Erro ao registrar o Service Worker:', error);
+    });
+}
