@@ -10,11 +10,24 @@ const firebaseConfig = {
   measurementId: "G-BNLQXEVLVC"
 };
 
-function isOnline () {
-  console.log("voce tem internet")
-  return window.navigator.onLine;
-}
+async function getCityFromCoords (latitude, longitude) {
+  const accessToken = 'pk.eyJ1IjoicGRyb3NvdXphIiwiYSI6ImNsbzNjenFwODBmYmUyc21vZ3h5eno3N3MifQ.1V6wvqbsW6WUpuKbKWgXRg';  // Substitua pelo seu token
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${accessToken}`;
 
+  const response = await fetch(url);
+  const data = await response.json()
+
+  if (data && data.features && data.features.length > 0) {
+    const placeData = data.features[0];
+
+    for (let feature of data.features) {
+      if (feature.place_type.includes("place")) {
+        return feature.text;
+      }
+    }
+  }
+  return null;
+}
 // Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
 const analytics = firebase.analytics();
@@ -23,6 +36,7 @@ const analytics = firebase.analytics();
 const auth = firebase.auth(app);
 
 // Função para Registro
+// Função para Registro
 function register () {
   const email = document.getElementById('register-email').value;
   const password = document.getElementById('register-password').value;
@@ -30,30 +44,45 @@ function register () {
 
   firebase.auth().createUserWithEmailAndPassword(email, password)
     .then((userCredential) => {
-      // Usuário criado. Adicionalmente, você pode salvar o nome ou outros campos no Firestore, se necessário.
-      console.log('Usuário registrado com sucesso!');
       const user = userCredential.user;
 
-      firebase.firestore().doc(`usuarios/${user.uid}`).set({
-        email: user.email,
-        role: 'user'
-      });
+      // ... parte anterior da função ...
 
-      // Atualiza o nome de exibição
-      user.updateProfile({
-        displayName: name
-      }).then(() => {
-        console.log('Nome de exibição atualizado com sucesso!');
-      }).catch((error) => {
-        console.error('Erro ao atualizar o nome de exibição:', error.message);
-      });
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async position => {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          const city = await getCityFromCoords(latitude, longitude); // Adicione esta linha
+
+          try {
+            await firebase.firestore().doc(`usuarios/${user.uid}`).set({
+              email: user.email,
+              role: 'user',
+              location: { latitude, longitude },
+              city: city  // Adicione esta linha
+            });
+
+            // ... restante do código ...
+          } catch (error) {
+            console.error('Erro ao registrar o usuário e a localização:', error.message);
+          }
+        }, error => {
+          console.warn('Erro ao obter geolocalização:', error.message);
+        });
+      } else {
+        console.warn('Geolocalização não é suportada neste navegador.');
+      }
+
 
     })
     .catch((error) => {
       console.error('Erro ao registrar o usuário:', error.message);
     });
 
+
   showLogin();
+
+  // ... restante da função ...
 }
 
 firebase.auth().onAuthStateChanged((user) => {
@@ -115,37 +144,28 @@ function addRequest () {
   const user = auth.currentUser;
 
   if (user) {
+    // Acessando a subcoleção corretamente
+    const requestsRef = firebase.firestore()
+      .collection('usuarios')
+      .doc(user.uid)
+      .collection('requisicoes');
 
-    if (isOnline()) {
-      // Acessando a subcoleção corretamente
-      const requestsRef = firebase.firestore()
-        .collection('usuarios')
-        .doc(user.uid)
-        .collection('requisicoes');
-
-      // Adicionando documento à subcoleção
-      requestsRef.add({
-        descricao: description,
-        hora: firebase.firestore.Timestamp.fromDate(new Date()),
-        status: "Pendente",
-        userId: user.uid,  // Novo campo: ID do usuário
-        userEmail: user.email  // Novo campo: E-mail do usuário
-      }).then(() => {
-        console.log('Requisição adicionada com sucesso!');
-        // Limpar campo de descrição
-        document.getElementById('request-description').value = '';
-        // Atualizar lista de requisições
-        listRequests();
-      }).catch((error) => {
-        console.error('Erro ao adicionar requisição:', error.message);
-      });
-    } else {
-      // Se estiver offline, armazene os dados localmente e registre uma tag de sincronização
-      storeRequestLocally(description, user.uid, user.email);
-      navigator.serviceWorker.ready.then(function (registration) {
-        return registration.sync.register('sync-requests');
-      });
-    }
+    // Adicionando documento à subcoleção
+    requestsRef.add({
+      descricao: description,
+      hora: firebase.firestore.Timestamp.fromDate(new Date()),
+      status: "Pendente",
+      userId: user.uid,  // Novo campo: ID do usuário
+      userEmail: user.email  // Novo campo: E-mail do usuário
+    }).then(() => {
+      console.log('Requisição adicionada com sucesso!');
+      // Limpar campo de descrição
+      document.getElementById('request-description').value = '';
+      // Atualizar lista de requisições
+      listRequests();
+    }).catch((error) => {
+      console.error('Erro ao adicionar requisição:', error.message);
+    });
     $('#addRequestModal').modal('hide');
   }
 }
@@ -210,7 +230,7 @@ function listRequests () {
       requestsList.innerHTML = ''; // Limpar lista existente
       querySnapshot.forEach((doc) => {
         const requestData = doc.data();
-        const li = document.createElement('li');
+        const li = document.createElement('li'); // Obtendo a cidade
 
         // Base displayText
         let displayText = requestData.descricao + " (" + requestData.status + ")";
@@ -220,6 +240,7 @@ function listRequests () {
         // Se o usuário for admin, exiba o e-mail do dono da requisição e os botões
         if (userRole === 'admin' && requestData.userEmail) {
           li.appendChild(document.createTextNode(` - Dono: ${requestData.userEmail}`));
+          li.appendChild(document.createTextNode(` - Cidade: ${requestData.city}`));
 
           // Botão para editar o status
           const editStatusButton = document.createElement('button');
@@ -403,6 +424,14 @@ function listItems () {
   $('#addItemModal').modal('show');
 }
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/firebase-messaging-sw.js').then(function (registration) {
+    console.log('Service Worker messaging ativo com sucesso:', registration);
+  }).catch(function (error) {
+    console.log('Falha ao registrar o Service Worker:', error);
+  });
+}
+
 const messaging = firebase.messaging();
 
 function initFCM () {
@@ -411,9 +440,8 @@ function initFCM () {
       console.log('Permissão concedida.');
 
       messaging.getToken().then((token) => {
-        const userTokens = token;
         console.log('Token FCM:', token);
-        // ... resto do seu código
+        storeUserToken(token);  // Aqui você armazena o token no Firestore
       });
     } else {
       console.error('Permissão não concedida.');
@@ -423,10 +451,22 @@ function initFCM () {
   });
 }
 
+function storeUserToken (token) {
+  const user = firebase.auth().currentUser;
+  if (user) {
+    const tokensRef = firebase.firestore().collection('usuarios').doc(user.uid).collection('tokens');
+    tokensRef.add({ token: token })
+      .then(() => {
+        console.log('Token armazenado com sucesso!');
+      })
+      .catch((error) => {
+        console.error('Erro ao armazenar o token:', error.message);
+      });
+  }
+}
 
 messaging.onMessage((payload) => {
   console.log('Notificação recebida:', payload);
-  // Você pode personalizar como deseja exibir a notificação aqui.
   displayNotification(payload);
 });
 
@@ -444,49 +484,4 @@ function displayNotification (payload) {
   };
 
   new Notification(title, options);
-}
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js').then(function (registration) {
-    console.log('Service Worker registrado com sucesso:', registration);
-  }).catch(function (error) {
-    console.log('Falha ao registrar o Service Worker:', error);
-  });
-}
-
-
-async function storeRequestLocally (description, userId, userEmail) {
-  try {
-    const requests = await idbKeyval.get('offline-requests') || [];
-    const newRequest = {
-      description,
-      userId,
-      userEmail,
-      timestamp: Date.now()
-    };
-    requests.push(newRequest);
-    await idbKeyval.set('offline-requests', requests);
-    console.log('Requisição armazenada localmente.');
-  } catch (error) {
-    console.error('Erro ao armazenar requisição localmente:', error);
-  }
-}
-
-async function storeItemLocally (itemName, itemQuantity, itemPrice, requestId, userId) {
-  try {
-    const items = await idbKeyval.get('offline-items') || [];
-    const newItem = {
-      itemName,
-      itemQuantity,
-      itemPrice,
-      requestId,
-      userId,
-      timestamp: Date.now()
-    };
-    items.push(newItem);
-    await idbKeyval.set('offline-items', items);
-    console.log('Item armazenado localmente.');
-  } catch (error) {
-    console.error('Erro ao armazenar item localmente:', error);
-  }
 }
