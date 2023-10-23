@@ -1,5 +1,3 @@
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBppI8FqUnvYRbcb3ODxekdOkzOrOdKOtg",
   authDomain: "tderequisicao-8b3c1.firebaseapp.com",
@@ -9,6 +7,10 @@ const firebaseConfig = {
   appId: "1:716098425450:web:b7749f812f3b0587e2b013",
   measurementId: "G-BNLQXEVLVC"
 };
+
+function isOnline () {
+  return navigator.onLine;
+}
 
 async function getCityFromCoords (latitude, longitude) {
   const accessToken = 'pk.eyJ1IjoicGRyb3NvdXphIiwiYSI6ImNsbzNjenFwODBmYmUyc21vZ3h5eno3N3MifQ.1V6wvqbsW6WUpuKbKWgXRg';  // Substitua pelo seu token
@@ -138,35 +140,48 @@ function logout () {
 
 const db = firebase.firestore();
 
-// Função para Adicionar Requisição
 function addRequest () {
   const description = document.getElementById('request-description').value;
   const user = auth.currentUser;
+  const requestData = {
+    descricao: description,
+    hora: firebase.firestore.Timestamp.fromDate(new Date()),
+    status: "Pendente",
+    userId: user.uid,
+    userEmail: user.email
+  };
 
-  if (user) {
-    // Acessando a subcoleção corretamente
-    const requestsRef = firebase.firestore()
-      .collection('usuarios')
-      .doc(user.uid)
-      .collection('requisicoes');
+  if (navigator.onLine) {
+    const description = document.getElementById('request-description').value;
+    const user = auth.currentUser;
 
-    // Adicionando documento à subcoleção
-    requestsRef.add({
-      descricao: description,
-      hora: firebase.firestore.Timestamp.fromDate(new Date()),
-      status: "Pendente",
-      userId: user.uid,  // Novo campo: ID do usuário
-      userEmail: user.email  // Novo campo: E-mail do usuário
-    }).then(() => {
-      console.log('Requisição adicionada com sucesso!');
-      // Limpar campo de descrição
-      document.getElementById('request-description').value = '';
-      // Atualizar lista de requisições
-      listRequests();
-    }).catch((error) => {
-      console.error('Erro ao adicionar requisição:', error.message);
-    });
-    $('#addRequestModal').modal('hide');
+    if (user) {
+      // Acessando a subcoleção corretamente
+      const requestsRef = firebase.firestore()
+        .collection('usuarios')
+        .doc(user.uid)
+        .collection('requisicoes');
+
+      // Adicionando documento à subcoleção
+      requestsRef.add({
+        descricao: description,
+        hora: firebase.firestore.Timestamp.fromDate(new Date()),
+        status: "Pendente",
+        userId: user.uid,  // Novo campo: ID do usuário
+        userEmail: user.email  // Novo campo: E-mail do usuário
+      }).then(() => {
+        console.log('Requisição adicionada com sucesso!');
+        // Limpar campo de descrição
+        document.getElementById('request-description').value = '';
+        // Atualizar lista de requisições
+        listRequests();
+      }).catch((error) => {
+        console.error('Erro ao adicionar requisição:', error.message);
+      });
+      $('#addRequestModal').modal('hide');
+    }
+  } else {
+    addRequestOffline(requestData);
   }
 }
 
@@ -485,3 +500,31 @@ function displayNotification (payload) {
 
   new Notification(title, options);
 }
+
+async function addRequestOffline (data) {
+  const savedRequests = await localforage.getItem('savedRequests') || [];
+  savedRequests.push(data);
+  await localforage.setItem('savedRequests', savedRequests);
+}
+
+window.addEventListener('online', async () => {
+  const user = auth.currentUser; // Garanta que temos o usuário atual
+  const savedRequests = await localforage.getItem('savedRequests') || [];
+
+  const requestsRef = firebase.firestore()
+    .collection('usuarios')
+    .doc(user.uid)
+    .collection('requisicoes');
+
+  for (let request of savedRequests) {
+    requestsRef.add(request).then(() => {
+      console.log('Requisição adicionada com sucesso!');
+      // Atualizar lista de requisições
+      listRequests();
+    }).catch((error) => {
+      console.error('Erro ao adicionar requisição:', error.message);
+    });
+  }
+
+  await localforage.setItem('savedRequests', []);
+});
