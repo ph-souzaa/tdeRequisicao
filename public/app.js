@@ -1,3 +1,28 @@
+function showRegister () {
+  hideElement('login-section');
+  showElement('register-section');
+}
+
+function showLogin () {
+  showElement('login-section');
+  hideElement('register-section');
+  hideElement('requests-section');
+}
+
+function showRequests () {
+  hideElement('login-section');
+  hideElement('register-section');
+  showElement('requests-section');
+}
+
+function hideElement (elementId) {
+  document.getElementById(elementId).style.display = 'none';
+}
+
+function showElement (elementId) {
+  document.getElementById(elementId).style.display = '';
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyBppI8FqUnvYRbcb3ODxekdOkzOrOdKOtg",
   authDomain: "tderequisicao-8b3c1.firebaseapp.com",

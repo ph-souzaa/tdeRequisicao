@@ -16,123 +16,152 @@
   <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
 
 </head>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    padding: 10px;
+    background-color: #f7f9fc;
+  }
 
-<!-- ... -->
+  h2 {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    text-align: center;
+  }
+
+  .card {
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 20px;
+    transition: box-shadow 0.3s ease;
+  }
+
+  .card:hover {
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  button,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"] {
+    border-radius: 5px;
+    margin-bottom: 10px;
+  }
+
+  button {
+    width: 100%;
+    transition: background-color 0.3s ease;
+  }
+
+  button:hover {
+    opacity: 0.9;
+  }
+
+  @media (max-width: 576px) {
+    body {
+      padding: 5px;
+    }
+
+    h2 {
+      font-size: 1.2em;
+    }
+  }
+</style>
 
 <body class="bg-light py-5">
-  <div class="container">
-    <!-- Tela de Login -->
-    <div class="card mb-5" id="login-section">
-      <div class="card-body">
-        <h2 class="card-title">Login</h2>
-        <input type="email" class="form-control mb-2" id="login-email" placeholder="Email">
-        <input type="password" class="form-control mb-3" id="login-password" placeholder="Senha">
-        <button onclick="login()" class="btn btn-success">Entrar</button>
-        <button onclick="showRegister()" class="btn btn-secondary mt-3">Registrar</button>
+
+  <h2>TDE REQUISIÇÕES</h1>
+    <div class="container">
+      <!-- Tela de Login -->
+      <div class="card mb-5" id="login-section">
+        <div class="card-body">
+          <h2 class="card-title">Login</h2>
+          <input type="email" class="form-control mb-2" id="login-email" placeholder="Email">
+          <input type="password" class="form-control mb-3" id="login-password" placeholder="Senha">
+          <button onclick="login()" class="btn btn-success">Entrar</button>
+          <button onclick="showRegister()" class="btn btn-secondary mt-3">Registrar</button>
+        </div>
       </div>
+
+      <!-- Tela de Registro -->
+      <div class="card mb-5" id="register-section" style="display: none;">
+        <div class="card-body">
+          <h2 class="card-title">Registro</h2>
+          <input type="text" class="form-control mb-2" id="register-name" placeholder="Nome">
+          <input type="email" class="form-control mb-2" id="register-email" placeholder="Email">
+          <input type="password" class="form-control mb-3" id="register-password" placeholder="Senha">
+          <button onclick="register()" class="btn btn-primary">Registrar</button>
+          <button onclick="showLogin()" class="btn btn-outline-secondary mt-3">Voltar</button>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Modal para Criar Nova Requisição -->
+      <div class="modal fade" id="addRequestModal">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title">Nova Requisição</h4>
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+              <input type="text" class="form-control mb-3" id="request-description"
+                placeholder="Descrição da Requisição">
+              <button onclick="addRequest()" class="btn btn-success">Criar Requisição</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de Requisições -->
+      <div class="card mb-5" id="requests-section" style="display: none;">
+        <!-- Navbar com botão de sair -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light mb-5">
+          <button onclick="logout()" class="btn btn-outline-danger ml-auto">Sair</button>
+        </nav>
+        <div class="card-body">
+          <h2 class="card-title">Minhas Requisições</h2>
+          <!-- Botão para abrir modal de criação de requisição -->
+          <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#addRequestModal">Nova
+            Requisição</button>
+          <ul class="list-group" id="requests-list">
+            <!-- As requisições serão listadas aqui -->
+          </ul>
+        </div>
+      </div>
+
     </div>
 
-    <!-- Tela de Registro -->
-    <div class="card mb-5" id="register-section" style="display: none;">
-      <div class="card-body">
-        <h2 class="card-title">Registro</h2>
-        <input type="text" class="form-control mb-2" id="register-name" placeholder="Nome">
-        <input type="email" class="form-control mb-2" id="register-email" placeholder="Email">
-        <input type="password" class="form-control mb-3" id="register-password" placeholder="Senha">
-        <button onclick="register()" class="btn btn-primary">Registrar</button>
-        <button onclick="showLogin()" class="btn btn-outline-secondary mt-3">Voltar</button>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Modal para Criar Nova Requisição -->
-    <div class="modal fade" id="addRequestModal">
+    <!-- Modal para Adicionar Item -->
+    <div class="modal fade" id="addItemModal">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h4 class="modal-title">Nova Requisição</h4>
+            <h4 class="modal-title">Adicionar Item</h4>
             <button type="button" class="close" data-dismiss="modal">&times;</button>
           </div>
           <div class="modal-body">
-            <input type="text" class="form-control mb-3" id="request-description" placeholder="Descrição da Requisição">
-            <button onclick="addRequest()" class="btn btn-success">Criar Requisição</button>
+            <h5 id="current-request-description"></h5>
+            <input type="text" class="form-control mb-2" id="item-name" placeholder="Nome do Item">
+            <input type="number" class="form-control mb-2" id="item-quantity" placeholder="Quantidade">
+            <input type="number" class="form-control mb-3" id="item-price" placeholder="Preço" step="0.01">
+            <button onclick="addItem()" class="btn btn-warning">Adicionar Item</button>
+            <ul id="modal-items-list" class="list-group mt-3"></ul>
           </div>
+
         </div>
       </div>
     </div>
 
-    <!-- Lista de Requisições -->
-    <div class="card mb-5" id="requests-section" style="display: none;">
-      <!-- Navbar com botão de sair -->
-      <nav class="navbar navbar-expand-lg navbar-light bg-light mb-5">
-        <button onclick="logout()" class="btn btn-outline-danger ml-auto">Sair</button>
-      </nav>
-      <div class="card-body">
-        <h2 class="card-title">Minhas Requisições</h2>
-        <!-- Botão para abrir modal de criação de requisição -->
-        <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#addRequestModal">Nova Requisição</button>
-        <ul class="list-group" id="requests-list">
-          <!-- As requisições serão listadas aqui -->
-        </ul>
-      </div>
-    </div>
+    <script src="app.js"></script>
 
-  </div>
-
-  <!-- Modal para Adicionar Item -->
-  <div class="modal fade" id="addItemModal">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h4 class="modal-title">Adicionar Item</h4>
-          <button type="button" class="close" data-dismiss="modal">&times;</button>
-        </div>
-        <div class="modal-body">
-          <h5 id="current-request-description"></h5>
-          <input type="text" class="form-control mb-2" id="item-name" placeholder="Nome do Item">
-          <input type="number" class="form-control mb-2" id="item-quantity" placeholder="Quantidade">
-          <input type="number" class="form-control mb-3" id="item-price" placeholder="Preço" step="0.01">
-          <button onclick="addItem()" class="btn btn-warning">Adicionar Item</button>
-          <ul id="modal-items-list" class="list-group mt-3"></ul>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <script src="app.js"></script>
-
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
-  <!-- Funções JavaScript adicionais para controlar o fluxo -->
-  <script>
-    function showRegister () {
-      hideElement('login-section');
-      showElement('register-section');
-    }
-
-    function showLogin () {
-      showElement('login-section');
-      hideElement('register-section');
-      hideElement('requests-section');
-    }
-
-    function showRequests () {
-      hideElement('login-section');
-      hideElement('register-section');
-      showElement('requests-section');
-    }
-
-    function hideElement (elementId) {
-      document.getElementById(elementId).style.display = 'none';
-    }
-
-    function showElement (elementId) {
-      document.getElementById(elementId).style.display = '';
-    }
-  </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 </body>
 
