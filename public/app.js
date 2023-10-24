@@ -89,7 +89,7 @@ function login () {
       const user = userCredential.user;
       // Após autenticação bem-sucedida, recupere os dados do usuário do Firestore
       listRequests();
-      return firebase.firestore().doc(`usuarios/${user.uid}`).get();
+      return firebase.firestore().doc(`usuarios/${user.uid}`).get()
     })
     .then(doc => {
       if (doc.exists) {
@@ -118,7 +118,6 @@ function logout () {
   });
   showLogin();
 }
-
 
 const db = firebase.firestore();
 
@@ -217,29 +216,26 @@ function listRequests () {
   if (user) {
     let requestsRef;
     if (userRole === 'admin') {
-      requestsRef = firebase.firestore().collectionGroup('requisicoes'); // Carrega requisições de todos os usuários
+      requestsRef = firebase.firestore().collectionGroup('requisicoes');
     } else {
-      requestsRef = firebase.firestore().collection('usuarios').doc(user.uid).collection('requisicoes'); // Carrega apenas as requisições do usuário atual
+      requestsRef = firebase.firestore().collection('usuarios').doc(user.uid).collection('requisicoes');
     }
 
     requestsRef.get().then((querySnapshot) => {
       const requestsList = document.getElementById('requests-list');
-      requestsList.innerHTML = ''; // Limpar lista existente
-      querySnapshot.forEach((doc) => {
-        const requestData = doc.data();
-        const li = document.createElement('li'); // Obtendo a cidade
+      requestsList.innerHTML = '';
 
-        // Base displayText
+      const processRequest = (doc, requestData, city) => {
+        const li = document.createElement('li');
+
         let displayText = requestData.descricao + " (" + requestData.status + ")";
         const textNode = document.createTextNode(displayText);
         li.appendChild(textNode);
 
-        // Se o usuário for admin, exiba o e-mail do dono da requisição e os botões
         if (userRole === 'admin' && requestData.userEmail) {
           li.appendChild(document.createTextNode(` - Dono: ${requestData.userEmail}`));
-          li.appendChild(document.createTextNode(` - Cidade: ${requestData.city}`));
+          li.appendChild(document.createTextNode(` - Cidade: ${city}`));
 
-          // Botão para editar o status
           const editStatusButton = document.createElement('button');
           editStatusButton.textContent = "Editar Status";
           editStatusButton.onclick = function () {
@@ -250,11 +246,10 @@ function listRequests () {
           };
           li.appendChild(editStatusButton);
 
-          // Botão para excluir
           const deleteButton = document.createElement('button');
           deleteButton.textContent = "Excluir";
           deleteButton.onclick = function (event) {
-            event.stopPropagation();  // Adicione esta linha
+            event.stopPropagation();
             if (confirm("Tem certeza de que deseja excluir esta requisição?")) {
               deleteRequest(doc.id);
             }
@@ -263,22 +258,41 @@ function listRequests () {
         }
 
         li.onclick = function () {
-          // Configurar a visualização de itens
-          // Abre o modal para vincular um item
           $('#addItemModal').modal('show');
           currentRequestId = doc.id;
           document.getElementById('current-request-description').textContent = requestData.descricao;
-          document.getElementById('modal-items-list').style.display = 'block'; // Mostrar a seção de itens
-          listItems(); // Carregar itens da requisição
+          document.getElementById('modal-items-list').style.display = 'block';
+          listItems();
         };
 
-        requestsList.appendChild(li); // Adicione a 'li' à lista de requisições
+        requestsList.appendChild(li);
+      };
+
+      querySnapshot.forEach((doc) => {
+        const requestData = doc.data();
+
+        if (userRole === 'admin') {
+          const userRef = firebase.firestore().collection('usuarios').doc(requestData.userId);
+
+          userRef.get().then(userDoc => {
+            if (userDoc.exists) {
+              const userData = userDoc.data();
+              processRequest(doc, requestData, userData.city);
+            }
+          }).catch(error => {
+            console.error('Erro ao obter dados do usuário:', error.message);
+          });
+        } else {
+          processRequest(doc, requestData, null);
+        }
       });
+
     }).catch((error) => {
       console.error('Erro ao listar requisições:', error.message);
     });
   }
 }
+
 
 
 // Função para Adicionar Item
